@@ -34,14 +34,28 @@ const initialPlayer2Board = [
 ]
 
 export function GameBoard() {
-  const { gameState, actionLog, nextPhase, playCard, resetGame } = useGameState()
-  const [playerHand, setPlayerHand] = useState(initialPlayerHand)
+  const { gameState, actionLog, nextPhase, playCard, resetGame, isInitialized } = useGameState()
   const [selectedCard, setSelectedCard] = useState<GameCardProps | null>(null)
   const [draggedCard, setDraggedCard] = useState<GameCardProps | null>(null)
   const [validDropZones, setValidDropZones] = useState<number[]>([])
 
   const [player1Board, setPlayer1Board] = useState<(GameCardProps | null)[]>(initialPlayer1Board)
   const [player2Board, setPlayer2Board] = useState<(GameCardProps | null)[]>(initialPlayer2Board)
+
+  // Get current player's hand from game state
+  const currentPlayerHand = gameState.currentPlayer === "player1" ? gameState.player1Hand : gameState.player2Hand
+
+  // Show loading state while deck is being initialized
+  if (!isInitialized) {
+    return (
+      <div className="w-full max-w-6xl mx-auto space-y-4">
+        <div className="bg-white rounded-xl shadow-lg p-6 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Shuffling deck and dealing cards...</p>
+        </div>
+      </div>
+    )
+  }
 
   const handleDragStart =
     (card: GameCardProps, fromHand = false) =>
@@ -74,11 +88,7 @@ export function GameBoard() {
       }
 
       if (droppedCard.fromHand) {
-        // Remove card from hand and place on board
-        setPlayerHand((prev) =>
-          prev.filter((card) => !(card.type === droppedCard.type && card.value === droppedCard.value)),
-        )
-
+        // Place card on board (hand removal is handled by playCard function)
         if (isPlayer2) {
           setPlayer2Board((prev) => {
             const newBoard = [...prev]
@@ -104,105 +114,172 @@ export function GameBoard() {
 
   const handleResetGame = () => {
     resetGame()
-    setPlayerHand(initialPlayerHand)
     setPlayer1Board(initialPlayer1Board)
     setPlayer2Board(initialPlayer2Board)
     setSelectedCard(null)
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-4">
-      <GameStatus gameState={gameState} actionLog={actionLog} onNextPhase={nextPhase} onResetGame={handleResetGame} />
+    <div className="w-full max-w-8xl mx-auto">
+      {/* Main Layout with Side Status Bars */}
+      <div className="flex gap-4 items-start">
+        {/* Left Status Panel */}
+        <div className="w-60 flex-shrink-0">
+          <GameStatus 
+            gameState={gameState} 
+            actionLog={actionLog} 
+            onNextPhase={nextPhase} 
+            onResetGame={handleResetGame}
+            position="left"
+          />
+        </div>
 
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="grid grid-cols-12 gap-4 h-[600px]">
-          {/* Left Player Cards */}
-          <div className="col-span-2 flex flex-col justify-center space-y-4">
-            {playerCards.map((card, index) => (
-              <GameCard key={`left-${index}`} {...card} />
-            ))}
-          </div>
-
-          {/* Left Game Area */}
-          <div className="col-span-3 bg-gray-100 rounded-lg p-4">
-            <h3 className="text-sm font-semibold mb-4 text-center">
-              Player 1 Area
-              {gameState.currentPlayer === "player1" && <span className="ml-2 text-blue-600 font-bold">(Active)</span>}
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              {player1Board.map((card, index) => (
-                <CardSlot
-                  key={index}
-                  card={card || undefined}
-                  isEmpty={!card}
-                  isValidDropTarget={validDropZones.includes(index)}
-                  onDrop={handleCardDrop(index, false)}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Center Area */}
-          <div className="col-span-2 flex flex-col justify-center items-center space-y-4">
-            {/* Draw Pile */}
-            <div className="relative">
-              <GameCard type="attack" value={0} />
-              <div className="absolute inset-0 bg-gray-800 rounded-lg opacity-50"></div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-white font-bold">DECK</span>
+        {/* 3D Game Board Container */}
+        <div className="flex-1 relative perspective-[1000px]">
+        {/* Main 3D Game Board */}
+        <div className="relative bg-gradient-to-b from-amber-100/90 via-yellow-50/90 to-amber-200/90 backdrop-blur-sm rounded-3xl shadow-2xl border-4 border-amber-300/50 transform-gpu preserve-3d" 
+             style={{ transform: 'rotateX(25deg) ' }}>
+          
+          {/* Board Inner Shadow */}
+          <div className="absolute inset-4 bg-gradient-to-br from-amber-50/50 to-yellow-100/50 rounded-2xl shadow-inner"></div>
+          
+          {/* Game Board Layout */}
+          <div className="relative z-10 p-8">
+            
+            {/* Top Player Area (Player 2) */}
+            <div className="mb-8">
+              <div className="bg-gradient-to-b from-red-100/80 to-red-200/80 backdrop-blur-sm rounded-xl p-4 border-2 border-red-300/50 shadow-lg">
+                <h3 className="text-sm font-bold mb-3 text-center text-red-800">
+                  Player 2 Area
+                  {gameState.currentPlayer === "player2" && <span className="ml-2 text-blue-600 font-bold">(Active)</span>}
+                </h3>
+                <div className="grid grid-cols-4 gap-4">
+                  {player2Board.slice(0, 4).map((card, index) => (
+                    <div key={index} className="flex flex-col items-center space-y-2">
+                      {/* SPV Health Indicator */}
+                      <div className="transform scale-75">
+                        <GameCard type="shield" value={5} />
+                        <div className="absolute inset-0 bg-gradient-to-br from-green-600/70 to-green-700/70 rounded-lg backdrop-blur-sm"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-white font-bold text-xs drop-shadow-lg">SPV</span>
+                        </div>
+                      </div>
+                      {/* Card Slot */}
+                      <CardSlot
+                        card={card || undefined}
+                        isEmpty={!card}
+                        onDrop={handleCardDrop(index, true)}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Central Card */}
-            <GameCard type="scanner" />
-          </div>
+            {/* Center Area - Deck and Special Cards */}
+            <div className="flex justify-center items-center mb-8 py-6">
+              <div className="flex items-center space-x-8">
+                {/* Left Deck */}
+                <div className="relative transform hover:scale-105 transition-transform">
+                  <GameCard type="attack" value={0} />
+                  <div className="absolute inset-0 bg-gradient-to-br from-gray-800/70 to-gray-900/70 rounded-lg backdrop-blur-sm"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-white font-bold text-sm drop-shadow-lg">DECK</span>
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white text-xs px-2 py-1 rounded-full font-bold shadow-lg">
+                    {gameState.deck.length}
+                  </div>
+                </div>
 
-          {/* Right Game Area */}
-          <div className="col-span-3 bg-gray-100 rounded-lg p-4">
-            <h3 className="text-sm font-semibold mb-4 text-center">
-              Player 2 Area
-              {gameState.currentPlayer === "player2" && <span className="ml-2 text-blue-600 font-bold">(Active)</span>}
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              {player2Board.map((card, index) => (
-                <CardSlot key={index} card={card || undefined} isEmpty={!card} onDrop={handleCardDrop(index, true)} />
-              ))}
+                {/* Central Special Card */}
+                <div className="transform scale-110 hover:scale-125 transition-transform">
+                  <GameCard type="scanner" />
+                </div>
+
+                {/* Right Deck/Graveyard */}
+                <div className="relative transform hover:scale-105 transition-transform">
+                  <GameCard type="shield" value={0} />
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-800/70 to-purple-900/70 rounded-lg backdrop-blur-sm"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-white font-bold text-xs drop-shadow-lg">GRAVE</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          {/* Right Player Cards */}
-          <div className="col-span-2 flex flex-col justify-center space-y-4">
-            {playerCards.map((card, index) => (
-              <GameCard key={`right-${index}`} {...card} />
-            ))}
+            {/* Bottom Player Area (Player 1) */}
+            <div>
+              <div className="bg-gradient-to-t from-blue-100/80 to-blue-200/80 backdrop-blur-sm rounded-xl p-4 border-2 border-blue-300/50 shadow-lg">
+                <h3 className="text-sm font-bold mb-3 text-center text-blue-800">
+                  Player 1 Area
+                  {gameState.currentPlayer === "player1" && <span className="ml-2 text-green-600 font-bold">(Active)</span>}
+                </h3>
+                <div className="grid grid-cols-4 gap-4">
+                  {player1Board.slice(0, 4).map((card, index) => (
+                    <div key={index} className="flex flex-col items-center space-y-2">
+                      {/* Card Slot */}
+                      <CardSlot
+                        card={card || undefined}
+                        isEmpty={!card}
+                        isValidDropTarget={validDropZones.includes(index)}
+                        onDrop={handleCardDrop(index, false)}
+                      />
+                      {/* SPV Health Indicator */}
+                      <div className="transform scale-75">
+                        <GameCard type="shield" value={5} />
+                        <div className="absolute inset-0 bg-gradient-to-br from-green-600/70 to-green-700/70 rounded-lg backdrop-blur-sm"></div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-white font-bold text-xs drop-shadow-lg">SPV</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Player Hand */}
-        <div className="mt-6 border-t pt-4">
-          <h3 className="text-lg font-semibold mb-4 text-center">
-            Your Hand
-            <span className="ml-4 text-sm text-gray-600">
-              {gameState.currentPhase === "play" && !gameState.gameOver
-                ? "Drag cards to play them"
-                : gameState.gameOver
-                  ? "Game Over"
-                  : `Current Phase: ${gameState.currentPhase}`}
-            </span>
-          </h3>
-          <div className="flex justify-center space-x-3">
-            {playerHand.map((card, index) => (
-              <GameCard
-                key={index}
-                {...card}
-                isActive={selectedCard === card}
-                isDragging={draggedCard === card}
-                onClick={() => handleCardClick(card)}
-                onDragStart={handleDragStart(card, true)}
-                onDragEnd={handleDragEnd}
-              />
-            ))}
-          </div>
+            {/* Player Hand - Below Player 1 Area */}
+            <div className="mt-6 flex justify-center">
+              <div className="bg-gradient-to-t from-gray-900/95 to-gray-800/95 backdrop-blur-md rounded-2xl p-4 border border-gray-600/50 shadow-2xl">
+                <h3 className="text-lg font-bold mb-3 text-center text-white">
+                  Your Hand
+                  <span className="ml-4 text-sm text-gray-300 font-normal">
+                    {gameState.currentPhase === "play" && !gameState.gameOver
+                      ? "Drag cards to play them"
+                      : gameState.gameOver
+                        ? "Game Over"
+                        : `Current Phase: ${gameState.currentPhase}`}
+                  </span>
+                </h3>
+                <div className="flex justify-center space-x-2">
+                  {currentPlayerHand.map((card: GameCardProps, index: number) => (
+                    <div key={index} className="transform hover:-translate-y-2 transition-transform">
+                      <GameCard
+                        {...card}
+                        isActive={selectedCard === card}
+                        isDragging={draggedCard === card}
+                        onClick={() => handleCardClick(card)}
+                        onDragStart={handleDragStart(card, true)}
+                        onDragEnd={handleDragEnd}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+        </div>
+
+        {/* Right Status Panel */}
+        <div className="w-60 flex-shrink-0">
+          <GameStatus 
+            gameState={gameState} 
+            actionLog={actionLog} 
+            onNextPhase={nextPhase} 
+            onResetGame={handleResetGame}
+            position="right"
+          />
         </div>
       </div>
     </div>
