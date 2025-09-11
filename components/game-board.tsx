@@ -34,10 +34,11 @@ const initialPlayer2Board = [
 ]
 
 export function GameBoard() {
-  const { gameState, actionLog, nextPhase, playCard, resetGame, isInitialized } = useGameState()
+  const { gameState, actionLog, nextPhase, playCard, resetGame, damageSPV, restoreSPV, isInitialized } = useGameState()
   const [selectedCard, setSelectedCard] = useState<GameCardProps | null>(null)
   const [draggedCard, setDraggedCard] = useState<GameCardProps | null>(null)
   const [validDropZones, setValidDropZones] = useState<number[]>([])
+  const [targetingMode, setTargetingMode] = useState<{card: GameCardProps, player?: string} | null>(null)
 
   const [player1Board, setPlayer1Board] = useState<(GameCardProps | null)[]>(initialPlayer1Board)
   const [player2Board, setPlayer2Board] = useState<(GameCardProps | null)[]>(initialPlayer2Board)
@@ -109,7 +110,38 @@ export function GameBoard() {
 
   const handleCardClick = (card: GameCardProps) => {
     if (gameState.gameOver) return
-    setSelectedCard(selectedCard === card ? null : card)
+    
+    // If card requires targeting (attack or shield), enter targeting mode
+    if (card.type === "attack" || card.type === "shield") {
+      setTargetingMode({ card })
+      setSelectedCard(card)
+    } else {
+      // For cards that don't need targeting, play immediately
+      playCard(card)
+      setSelectedCard(null)
+    }
+  }
+
+  const handleSPVClick = (player: "player1" | "player2", slotIndex: number) => {
+    if (gameState.gameOver) return
+    
+    if (targetingMode) {
+      // Play the targeted card
+      if (targetingMode.card.type === "attack") {
+        playCard(targetingMode.card, player, slotIndex)
+      } else if (targetingMode.card.type === "shield") {
+        playCard(targetingMode.card, player, slotIndex)
+      }
+      setTargetingMode(null)
+      setSelectedCard(null)
+    } else {
+      // Direct SPV interaction for testing
+      if (player === "player1") {
+        restoreSPV("player1", slotIndex, 1)
+      } else {
+        damageSPV("player2", slotIndex, 1)
+      }
+    }
   }
 
   const handleResetGame = () => {
@@ -146,29 +178,45 @@ export function GameBoard() {
           {/* Game Board Layout */}
           <div className="relative z-10 p-8">
             
-            {/* Top Player Area (Player 2) */}
+            {/* Top Player Area (Player 1) */}
             <div className="mb-8">
-              <div className="bg-gradient-to-b from-red-100/80 to-red-200/80 backdrop-blur-sm rounded-xl p-4 border-2 border-red-300/50 shadow-lg">
-                <h3 className="text-sm font-bold mb-3 text-center text-red-800">
-                  Player 2 Area
-                  {gameState.currentPlayer === "player2" && <span className="ml-2 text-blue-600 font-bold">(Active)</span>}
+              <div className="bg-gradient-to-b from-blue-100/80 to-blue-200/80 backdrop-blur-sm rounded-xl p-4 border-2 border-blue-300/50 shadow-lg">
+                <h3 className="text-sm font-bold mb-3 text-center text-blue-800">
+                  Player 1 Area
+                  {gameState.currentPlayer === "player1" && <span className="ml-2 text-green-600 font-bold">(Active)</span>}
                 </h3>
                 <div className="grid grid-cols-4 gap-4">
-                  {player2Board.slice(0, 4).map((card, index) => (
+                  {player1Board.slice(0, 4).map((card, index) => (
                     <div key={index} className="flex flex-col items-center space-y-2">
                       {/* SPV Health Indicator */}
-                      <div className="transform scale-75">
-                        <GameCard type="shield" value={5} />
-                        <div className="absolute inset-0 bg-gradient-to-br from-green-600/70 to-green-700/70 rounded-lg backdrop-blur-sm"></div>
+                      <div 
+                        className={`transform scale-75 cursor-pointer hover:scale-80 transition-transform ${
+                          targetingMode ? 'ring-2 ring-yellow-400 ring-opacity-75' : ''
+                        }`}
+                        onClick={() => handleSPVClick("player1", index)}
+                        title={targetingMode 
+                          ? `Target Player 1 Server ${index + 1} with ${targetingMode.card.type}` 
+                          : `Player 1 Server ${index + 1} - SPV: ${gameState.player1SPV[index]}/5 (Click to heal)`}
+                      >
+                        <GameCard type="shield" value={gameState.player1SPV[index]} />
+                        <div className={`absolute inset-0 rounded-lg backdrop-blur-sm ${
+                          gameState.player1SPV[index] > 3 ? 'bg-gradient-to-br from-green-600/70 to-green-700/70' :
+                          gameState.player1SPV[index] > 1 ? 'bg-gradient-to-br from-yellow-600/70 to-orange-600/70' :
+                          gameState.player1SPV[index] > 0 ? 'bg-gradient-to-br from-red-600/70 to-red-700/70' :
+                          'bg-gradient-to-br from-gray-600/70 to-gray-800/70'
+                        }`}></div>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-white font-bold text-xs drop-shadow-lg">SPV</span>
+                          <span className="text-white font-bold text-xs drop-shadow-lg">
+                            SPV {gameState.player1SPV[index]}
+                          </span>
                         </div>
                       </div>
                       {/* Card Slot */}
                       <CardSlot
                         card={card || undefined}
                         isEmpty={!card}
-                        onDrop={handleCardDrop(index, true)}
+                        isValidDropTarget={validDropZones.includes(index)}
+                        onDrop={handleCardDrop(index, false)}
                       />
                     </div>
                   ))}
@@ -207,29 +255,43 @@ export function GameBoard() {
               </div>
             </div>
 
-            {/* Bottom Player Area (Player 1) */}
+            {/* Bottom Player Area (Player 2) */}
             <div>
-              <div className="bg-gradient-to-t from-blue-100/80 to-blue-200/80 backdrop-blur-sm rounded-xl p-4 border-2 border-blue-300/50 shadow-lg">
-                <h3 className="text-sm font-bold mb-3 text-center text-blue-800">
-                  Player 1 Area
-                  {gameState.currentPlayer === "player1" && <span className="ml-2 text-green-600 font-bold">(Active)</span>}
+              <div className="bg-gradient-to-t from-red-100/80 to-red-200/80 backdrop-blur-sm rounded-xl p-4 border-2 border-red-300/50 shadow-lg">
+                <h3 className="text-sm font-bold mb-3 text-center text-red-800">
+                  Player 2 Area
+                  {gameState.currentPlayer === "player2" && <span className="ml-2 text-blue-600 font-bold">(Active)</span>}
                 </h3>
                 <div className="grid grid-cols-4 gap-4">
-                  {player1Board.slice(0, 4).map((card, index) => (
+                  {player2Board.slice(0, 4).map((card, index) => (
                     <div key={index} className="flex flex-col items-center space-y-2">
                       {/* Card Slot */}
                       <CardSlot
                         card={card || undefined}
                         isEmpty={!card}
-                        isValidDropTarget={validDropZones.includes(index)}
-                        onDrop={handleCardDrop(index, false)}
+                        onDrop={handleCardDrop(index, true)}
                       />
                       {/* SPV Health Indicator */}
-                      <div className="transform scale-75">
-                        <GameCard type="shield" value={5} />
-                        <div className="absolute inset-0 bg-gradient-to-br from-green-600/70 to-green-700/70 rounded-lg backdrop-blur-sm"></div>
+                      <div 
+                        className={`transform scale-75 cursor-pointer hover:scale-80 transition-transform ${
+                          targetingMode ? 'ring-2 ring-yellow-400 ring-opacity-75' : ''
+                        }`}
+                        onClick={() => handleSPVClick("player2", index)}
+                        title={targetingMode 
+                          ? `Target Player 2 Server ${index + 1} with ${targetingMode.card.type}` 
+                          : `Player 2 Server ${index + 1} - SPV: ${gameState.player2SPV[index]}/5 (Click to damage)`}
+                      >
+                        <GameCard type="shield" value={gameState.player2SPV[index]} />
+                        <div className={`absolute inset-0 rounded-lg backdrop-blur-sm ${
+                          gameState.player2SPV[index] > 3 ? 'bg-gradient-to-br from-green-600/70 to-green-700/70' :
+                          gameState.player2SPV[index] > 1 ? 'bg-gradient-to-br from-yellow-600/70 to-orange-600/70' :
+                          gameState.player2SPV[index] > 0 ? 'bg-gradient-to-br from-red-600/70 to-red-700/70' :
+                          'bg-gradient-to-br from-gray-600/70 to-gray-800/70'
+                        }`}></div>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-white font-bold text-xs drop-shadow-lg">SPV</span>
+                          <span className="text-white font-bold text-xs drop-shadow-lg">
+                            SPV {gameState.player2SPV[index]}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -246,12 +308,25 @@ export function GameBoard() {
                 <h3 className="text-lg font-bold mb-3 text-center text-white">
                   Your Hand
                   <span className="ml-4 text-sm text-gray-300 font-normal">
-                    {gameState.currentPhase === "play" && !gameState.gameOver
-                      ? "Drag cards to play them"
-                      : gameState.gameOver
-                        ? "Game Over"
-                        : `Current Phase: ${gameState.currentPhase}`}
+                    {targetingMode 
+                      ? `Targeting with ${targetingMode.card.type} - Click a server to target`
+                      : gameState.currentPhase === "play" && !gameState.gameOver
+                        ? "Click cards to play them"
+                        : gameState.gameOver
+                          ? "Game Over"
+                          : `Current Phase: ${gameState.currentPhase}`}
                   </span>
+                  {targetingMode && (
+                    <button 
+                      className="ml-4 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+                      onClick={() => {
+                        setTargetingMode(null)
+                        setSelectedCard(null)
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </h3>
                 <div className="flex justify-center space-x-2">
                   {currentPlayerHand.map((card: GameCardProps, index: number) => (
