@@ -3,6 +3,21 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@layer utilities {
+/* Hide scrollbar for Chrome, Safari, and Opera */
+.no-scrollbar::-webkit-scrollbar {
+display: none;
+}
+
+/* Hide scrollbar for IE, Edge, and Firefox */
+.no-scrollbar {
+-ms-overflow-style: none; /* IE and Edge */
+scrollbar-width: none; /* Firefox */
+}
+    }
 :root {
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);

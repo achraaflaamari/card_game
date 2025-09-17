@@ -7,6 +7,7 @@ interface CardSlotProps {
   isEmpty?: boolean
   isValidDropTarget?: boolean
   className?: string
+  title?: string
   onDrop?: (card: GameCardProps) => void
   onDragOver?: (e: React.DragEvent) => void
   onDragLeave?: (e: React.DragEvent) => void
@@ -17,6 +18,7 @@ export function CardSlot({
   isEmpty,
   isValidDropTarget,
   className,
+  title,
   onDrop,
   onDragOver,
   onDragLeave,
@@ -45,6 +47,7 @@ export function CardSlot({
         "hover:scale-105 hover:shadow-xl",
         className,
       )}
+      title={title}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onDragLeave={onDragLeave}
@@ -58,17 +61,10 @@ export function CardSlot({
         </div>
       ) : (
         <div className="text-center z-10">
-          {isValidDropTarget ? (
-            <div className="text-green-600 text-sm font-bold animate-bounce">
-              <div className="text-2xl mb-1">⬇️</div>
-              <div>Drop Here</div>
-            </div>
-          ) : (
-            <div className="text-amber-600/60 text-xs font-medium">
-              <div className="text-lg mb-1 opacity-50">◯</div>
-              <div>Empty Slot</div>
-            </div>
-          )}
+          <div className="text-amber-600/60 text-xs font-medium">
+            <div className="text-lg mb-1 opacity-50">◯</div>
+            <div>Empty Slot</div>
+          </div>
         </div>
       )}
     </div>

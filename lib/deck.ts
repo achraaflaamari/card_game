@@ -2,35 +2,45 @@ import type { GameCardProps } from "@/components/game-card"
 
 // Define the complete deck of cards
 export const FULL_DECK: GameCardProps[] = [
-  // Database cards (4 copies)
+  // Database cards (6 copies)
+  { type: "database", value: 2 },
   { type: "database", value: 3 },
   { type: "database", value: 4 },
   { type: "database", value: 5 },
   { type: "database", value: 6 },
+  { type: "database", value: 7 },
   
-  // Firewall cards (4 copies)
+  // Firewall cards (6 copies)
+  { type: "firewall", value: 1 },
   { type: "firewall", value: 2 },
   { type: "firewall", value: 3 },
   { type: "firewall", value: 4 },
   { type: "firewall", value: 5 },
+  { type: "firewall", value: 6 },
   
-  // Scanner cards (4 copies)
+  // Scanner cards (6 copies)
+  { type: "scanner", value: 1 },
   { type: "scanner", value: 2 },
   { type: "scanner", value: 3 },
   { type: "scanner", value: 4 },
   { type: "scanner", value: 5 },
+  { type: "scanner", value: 6 },
   
-  // Shield cards (4 copies)
+  // Shield cards (6 copies)
+  { type: "shield", value: 1 },
   { type: "shield", value: 2 },
   { type: "shield", value: 3 },
   { type: "shield", value: 4 },
   { type: "shield", value: 5 },
+  { type: "shield", value: 6 },
   
-  // Attack cards (4 copies)
+  // Attack cards (6 copies)
+  { type: "attack", value: 2 },
   { type: "attack", value: 3 },
   { type: "attack", value: 4 },
   { type: "attack", value: 5 },
   { type: "attack", value: 6 },
+  { type: "attack", value: 7 },
 ]
 
 /**

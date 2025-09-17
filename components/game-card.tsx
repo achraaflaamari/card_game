@@ -78,7 +78,7 @@ export function GameCard({
     <div
       className={cn(
         "relative cursor-pointer transition-all duration-300 transform-gpu",
-        !isDragging && "hover:scale-110 hover:z-10 hover:-translate-y-1",
+        !isDragging && "hover:scale-110 hover:z-50 hover:-translate-y-1",
         isDragging && "opacity-50 scale-95",
         isActive && "ring-4 ring-yellow-400 ring-offset-2 scale-105",
         isDraggable && "hover:shadow-2xl",

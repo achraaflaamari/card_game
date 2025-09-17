@@ -4,13 +4,12 @@ import { useState, useCallback, useEffect } from "react"
 import type { GameCardProps } from "@/components/game-card"
 import { createNewDeck, dealInitialHands, drawCards } from "@/lib/deck"
 
-export type GamePhase = "draw" | "play" | "attack" | "end"
 export type Player = "player1" | "player2"
 
 export interface GameState {
   currentPlayer: Player
-  currentPhase: GamePhase
   turn: number
+  movesRemaining: number // Number of moves left for current player (max 3)
   player1Score: number
   player2Score: number
   player1Health: number
@@ -27,8 +26,8 @@ export interface GameState {
 
 const initialGameState: GameState = {
   currentPlayer: "player1",
-  currentPhase: "draw",
   turn: 1,
+  movesRemaining: 3,
   player1Score: 0,
   player2Score: 0,
   player1Health: 20,
@@ -76,84 +75,65 @@ export function useGameState() {
         return prev
       }
 
+      if (prev.movesRemaining <= 0) {
+        addToLog("No moves remaining this turn!")
+        return prev
+      }
+
+      if (prev.currentPlayer !== player) {
+        addToLog("It's not your turn!")
+        return prev
+      }
+
+      // Check maximum hand size (7 cards)
+      const currentHand = player === "player1" ? prev.player1Hand : prev.player2Hand
+      if (currentHand.length >= 7) {
+        addToLog("Hand is full! Cannot draw more cards (maximum 7).")
+        return prev
+      }
+
       const { drawnCards, remainingDeck } = drawCards(prev.deck, 1)
       const drawnCard = drawnCards[0]
       
       if (!drawnCard) return prev
 
       const playerName = player === "player1" ? "Player 1" : "Player 2"
-      addToLog(`${playerName} draws a ${drawnCard.type} card`)
+      addToLog(`${playerName} draws a ${drawnCard.type} card (${prev.movesRemaining - 1} moves left)`)
 
-      return {
+      const newState = {
         ...prev,
         deck: remainingDeck,
         player1Hand: player === "player1" ? [...prev.player1Hand, drawnCard] : prev.player1Hand,
         player2Hand: player === "player2" ? [...prev.player2Hand, drawnCard] : prev.player2Hand,
-      }
-    })
-  }, [addToLog])
-
-  const nextPhase = useCallback(() => {
-    setGameState((prev) => {
-      const phases: GamePhase[] = ["draw", "play", "attack", "end"]
-      const currentIndex = phases.indexOf(prev.currentPhase)
-      const nextIndex = (currentIndex + 1) % phases.length
-
-      // Handle phase-specific actions
-      if (prev.currentPhase === "draw") {
-        // Draw a card immediately during draw phase transition
-        if (prev.deck.length > 0) {
-          const { drawnCards, remainingDeck } = drawCards(prev.deck, 1)
-          const drawnCard = drawnCards[0]
-          
-          if (drawnCard) {
-            const playerName = prev.currentPlayer === "player1" ? "Player 1" : "Player 2"
-            addToLog(`${playerName} draws a ${drawnCard.type} card`)
-            
-            const newState = {
-              ...prev,
-              deck: remainingDeck,
-              player1Hand: prev.currentPlayer === "player1" ? [...prev.player1Hand, drawnCard] : prev.player1Hand,
-              player2Hand: prev.currentPlayer === "player2" ? [...prev.player2Hand, drawnCard] : prev.player2Hand,
-            }
-            
-            if (nextIndex === 0) {
-              // New turn
-              const nextPlayer = prev.currentPlayer === "player1" ? "player2" : "player1"
-              addToLog(`Turn ${newState.turn + 1}: ${nextPlayer === "player1" ? "Player 1" : "Player 2"}'s turn`)
-              return {
-                ...newState,
-                currentPhase: phases[nextIndex],
-                currentPlayer: nextPlayer,
-                turn: newState.turn + 1,
-              }
-            }
-            
-            return {
-              ...newState,
-              currentPhase: phases[nextIndex],
-            }
-          }
-        } else {
-          addToLog("Deck is empty! No more cards to draw.")
-        }
+        movesRemaining: prev.movesRemaining - 1,
       }
 
-      if (nextIndex === 0) {
-        // New turn
+      // Check if turn should end
+      if (newState.movesRemaining <= 0) {
         const nextPlayer = prev.currentPlayer === "player1" ? "player2" : "player1"
         addToLog(`Turn ${prev.turn + 1}: ${nextPlayer === "player1" ? "Player 1" : "Player 2"}'s turn`)
         return {
-          ...prev,
-          currentPhase: phases[nextIndex],
+          ...newState,
           currentPlayer: nextPlayer,
-          turn: prev.turn + 1,
+          turn: newState.turn + 1,
+          movesRemaining: 3,
         }
       }
 
+      return newState
+    })
+  }, [addToLog])
+
+  const endTurn = useCallback(() => {
+    setGameState((prev) => {
+      const nextPlayer = prev.currentPlayer === "player1" ? "player2" : "player1"
+      addToLog(`Turn ${prev.turn + 1}: ${nextPlayer === "player1" ? "Player 1" : "Player 2"}'s turn`)
+      
       return {
         ...prev,
-        currentPhase: phases[nextIndex],
+        currentPlayer: nextPlayer,
+        turn: prev.turn + 1,
+        movesRemaining: 3,
       }
     })
   }, [addToLog])
@@ -161,12 +141,15 @@ export function useGameState() {
   const playCard = useCallback(
     (card: GameCardProps, targetPlayer?: Player, targetSlot?: number) => {
       setGameState((prev) => {
-        if (prev.currentPhase !== "play") return prev
+        if (prev.movesRemaining <= 0) {
+          addToLog("No moves remaining this turn!")
+          return prev
+        }
 
         const newState = { ...prev }
         const playerName = prev.currentPlayer === "player1" ? "Player 1" : "Player 2"
 
-        // Remove card from player's hand
+        // Remove card from player's hand and decrease moves
         if (prev.currentPlayer === "player1") {
           newState.player1Hand = prev.player1Hand.filter((handCard, index) => {
             // Remove first matching card
@@ -184,6 +167,8 @@ export function useGameState() {
             return true
           })
         }
+        
+        newState.movesRemaining = prev.movesRemaining - 1
 
         // Calculate card effects
         if (card.type === "attack" && targetPlayer && targetSlot !== undefined) {
@@ -232,7 +217,7 @@ export function useGameState() {
             addToLog(`${playerName} activates database backup - all servers restore 2 SPV`)
           }
         } else {
-          addToLog(`${playerName} plays ${card.type}`)
+          addToLog(`${playerName} plays ${card.type} (${newState.movesRemaining} moves left)`)
         }
 
         // Add score for playing card
@@ -256,6 +241,18 @@ export function useGameState() {
           addToLog("All Player 2 servers destroyed! Player 1 wins!")
         }
 
+        // Check if turn should end after playing card
+        if (newState.movesRemaining <= 0 && !newState.gameOver) {
+          const nextPlayer = prev.currentPlayer === "player1" ? "player2" : "player1"
+          addToLog(`Turn ${prev.turn + 1}: ${nextPlayer === "player1" ? "Player 1" : "Player 2"}'s turn`)
+          return {
+            ...newState,
+            currentPlayer: nextPlayer,
+            turn: newState.turn + 1,
+            movesRemaining: 3,
+          }
+        }
+
         return newState
       })
     },
@@ -269,8 +266,8 @@ export function useGameState() {
     
     const newGameState: GameState = {
       currentPlayer: "player1",
-      currentPhase: "draw",
       turn: 1,
+      movesRemaining: 3,
       player1Score: 0,
       player2Score: 0,
       player1Health: 20,
@@ -338,15 +335,34 @@ export function useGameState() {
     })
   }, [addToLog])
 
+  const addCardToHand = useCallback((card: GameCardProps) => {
+    setGameState((prev) => {
+      const newState = { ...prev }
+      const playerName = prev.currentPlayer === "player1" ? "Player 1" : "Player 2"
+      
+      // Add card to current player's hand without affecting score
+      if (prev.currentPlayer === "player1") {
+        newState.player1Hand = [...prev.player1Hand, card]
+      } else {
+        newState.player2Hand = [...prev.player2Hand, card]
+      }
+      
+      addToLog(`${playerName} swaps ${card.type} back to hand`)
+      
+      return newState
+    })
+  }, [addToLog])
+
   return {
     gameState,
     actionLog,
-    nextPhase,
+    endTurn,
     playCard,
     resetGame,
     drawCard,
     damageSPV,
     restoreSPV,
+    addCardToHand,
     isInitialized,
   }
 }
