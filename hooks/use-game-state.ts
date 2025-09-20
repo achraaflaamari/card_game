@@ -151,17 +151,21 @@ export function useGameState() {
 
         // Remove card from player's hand and decrease moves
         if (prev.currentPlayer === "player1") {
+          let cardRemoved = false
           newState.player1Hand = prev.player1Hand.filter((handCard, index) => {
-            // Remove first matching card
-            if (handCard.type === card.type && handCard.value === card.value) {
+            // Remove only the first matching card
+            if (!cardRemoved && handCard.type === card.type && handCard.category === card.category && handCard.value === card.value) {
+              cardRemoved = true
               return false
             }
             return true
           })
         } else {
+          let cardRemoved = false
           newState.player2Hand = prev.player2Hand.filter((handCard, index) => {
-            // Remove first matching card
-            if (handCard.type === card.type && handCard.value === card.value) {
+            // Remove only the first matching card
+            if (!cardRemoved && handCard.type === card.type && handCard.category === card.category && handCard.value === card.value) {
+              cardRemoved = true
               return false
             }
             return true
@@ -183,39 +187,9 @@ export function useGameState() {
             newState.player2SPV[targetSlot] = Math.max(0, prev.player2SPV[targetSlot] - damage)
             addToLog(`${playerName} attacks Player 2 server slot ${targetSlot + 1} for ${damage} SPV damage`)
           }
-        } else if (card.type === "shield" && targetSlot !== undefined) {
-          const healing = card.value || 0
-          // Heal SPV instead of player health
-          if (prev.currentPlayer === "player1") {
-            newState.player1SPV = [...prev.player1SPV]
-            newState.player1SPV[targetSlot] = Math.min(5, prev.player1SPV[targetSlot] + healing)
-            addToLog(`${playerName} restores ${healing} SPV to server slot ${targetSlot + 1}`)
-          } else {
-            newState.player2SPV = [...prev.player2SPV]
-            newState.player2SPV[targetSlot] = Math.min(5, prev.player2SPV[targetSlot] + healing)
-            addToLog(`${playerName} restores ${healing} SPV to server slot ${targetSlot + 1}`)
-          }
-        } else if (card.type === "firewall") {
-          // Firewall protects all servers by adding 1 SPV to each
-          if (prev.currentPlayer === "player1") {
-            newState.player1SPV = prev.player1SPV.map(spv => Math.min(5, spv + 1))
-            addToLog(`${playerName} deploys firewall - all servers gain 1 SPV`)
-          } else {
-            newState.player2SPV = prev.player2SPV.map(spv => Math.min(5, spv + 1))
-            addToLog(`${playerName} deploys firewall - all servers gain 1 SPV`)
-          }
-        } else if (card.type === "scanner") {
+        } else if (card.category === "PORT SCANNER") {
           // Scanner reveals opponent's SPV status (already visible, so just log)
           addToLog(`${playerName} uses scanner to analyze opponent servers`)
-        } else if (card.type === "database") {
-          // Database restores 2 SPV to all servers
-          if (prev.currentPlayer === "player1") {
-            newState.player1SPV = prev.player1SPV.map(spv => Math.min(5, spv + 2))
-            addToLog(`${playerName} activates database backup - all servers restore 2 SPV`)
-          } else {
-            newState.player2SPV = prev.player2SPV.map(spv => Math.min(5, spv + 2))
-            addToLog(`${playerName} activates database backup - all servers restore 2 SPV`)
-          }
         } else {
           addToLog(`${playerName} plays ${card.type} (${newState.movesRemaining} moves left)`)
         }
@@ -239,6 +213,30 @@ export function useGameState() {
           newState.gameOver = true
           newState.winner = "player1"
           addToLog("All Player 2 servers destroyed! Player 1 wins!")
+        }
+
+        // Check end game condition: deck empty and no attack cards in both hands
+        if (newState.deck.length === 0 && !newState.gameOver) {
+          const player1AttackCards = newState.player1Hand.filter(card => card.type === "attack")
+          const player2AttackCards = newState.player2Hand.filter(card => card.type === "attack")
+          
+          if (player1AttackCards.length === 0 && player2AttackCards.length === 0) {
+            newState.gameOver = true
+            // Determine winner based on SPV totals
+            const player1TotalSPV = newState.player1SPV.reduce((sum, spv) => sum + spv, 0)
+            const player2TotalSPV = newState.player2SPV.reduce((sum, spv) => sum + spv, 0)
+            
+            if (player1TotalSPV > player2TotalSPV) {
+              newState.winner = "player1"
+              addToLog(`Game Over! Deck empty and no attack cards remain. Player 1 wins with ${player1TotalSPV} SPV vs ${player2TotalSPV} SPV!`)
+            } else if (player2TotalSPV > player1TotalSPV) {
+              newState.winner = "player2"
+              addToLog(`Game Over! Deck empty and no attack cards remain. Player 2 wins with ${player2TotalSPV} SPV vs ${player1TotalSPV} SPV!`)
+            } else {
+              newState.winner = null
+              addToLog(`Game Over! Deck empty and no attack cards remain. It's a tie with ${player1TotalSPV} SPV each!`)
+            }
+          }
         }
 
         // Check if turn should end after playing card
@@ -338,16 +336,11 @@ export function useGameState() {
   const addCardToHand = useCallback((card: GameCardProps) => {
     setGameState((prev) => {
       const newState = { ...prev }
-      const playerName = prev.currentPlayer === "player1" ? "Player 1" : "Player 2"
       
-      // Add card to current player's hand without affecting score
-      if (prev.currentPlayer === "player1") {
-        newState.player1Hand = [...prev.player1Hand, card]
-      } else {
-        newState.player2Hand = [...prev.player2Hand, card]
-      }
+      // Always add card to Player 2's hand (human player)
+      newState.player2Hand = [...prev.player2Hand, card]
       
-      addToLog(`${playerName} swaps ${card.type} back to hand`)
+      addToLog(`Player 2 (You) swaps ${card.type} back to hand`)
       
       return newState
     })

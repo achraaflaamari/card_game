@@ -1,47 +1,148 @@
-import type { GameCardProps } from "@/components/game-card"
+import type { GameCardProps, CardType, CardCategory } from "@/components/game-card"
 
-// Define the complete deck of cards
+// Define the complete deck of cards with proper cybersecurity content
 export const FULL_DECK: GameCardProps[] = [
-  // Database cards (6 copies)
-  { type: "database", value: 2 },
-  { type: "database", value: 3 },
-  { type: "database", value: 4 },
-  { type: "database", value: 5 },
-  { type: "database", value: 6 },
-  { type: "database", value: 7 },
-  
-  // Firewall cards (6 copies)
-  { type: "firewall", value: 1 },
-  { type: "firewall", value: 2 },
-  { type: "firewall", value: 3 },
-  { type: "firewall", value: 4 },
-  { type: "firewall", value: 5 },
-  { type: "firewall", value: 6 },
-  
-  // Scanner cards (6 copies)
-  { type: "scanner", value: 1 },
-  { type: "scanner", value: 2 },
-  { type: "scanner", value: 3 },
-  { type: "scanner", value: 4 },
-  { type: "scanner", value: 5 },
-  { type: "scanner", value: 6 },
-  
-  // Shield cards (6 copies)
-  { type: "shield", value: 1 },
-  { type: "shield", value: 2 },
-  { type: "shield", value: 3 },
-  { type: "shield", value: 4 },
-  { type: "shield", value: 5 },
-  { type: "shield", value: 6 },
-  
-  // Attack cards (6 copies)
-  { type: "attack", value: 2 },
-  { type: "attack", value: 3 },
-  { type: "attack", value: 4 },
-  { type: "attack", value: 5 },
-  { type: "attack", value: 6 },
-  { type: "attack", value: 7 },
+  // Attack cards
+  {
+    type: "attack",
+    category: "SQL INJECTION",
+    value: 2
+  },
+  {
+    type: "attack",
+    category: "DDOS ATTACK",
+    value: 1
+  },
+  {
+    type: "attack",
+    category: "RANSOMWARE",
+    value: 2
+  },
+  {
+    type: "attack",
+    category: "PHISHING",
+    value: 3
+  },
+  {
+    type: "attack",
+    category: "BRUTE FORCE",
+    value: 4
+  },
+  {
+    type: "attack",
+    category: "ZERO-DAY",
+    value: 2
+  },
+  {
+    type: "attack",
+    category: "WORM",
+    value: 3
+  },
+  {
+    type: "attack",
+    category: "ROOTKIT",
+    value: 6
+  },
+  {
+    type: "attack",
+    category: "KEYLOGGER",
+    value: 2
+  },
+  {
+    type: "attack",
+    category: "PORT SCANNER",
+    value: 1
+  },
+
+  // Defence cards
+  {
+    type: "defence",
+    category: "FIREWALL",
+    value: 3
+  },
+  {
+    type: "defence",
+    category: "DATA VAULT",
+    value: 2
+  },
+  {
+    type: "defence",
+    category: "HONEYPOT",
+    value: 2
+  },
+  {
+    type: "defence",
+    category: "BACKUP",
+    value: 1
+  },
+  {
+    type: "defence",
+    category: "MULTI-FACTOR",
+    value: 2
+  },
+  {
+    type: "defence",
+    category: "ENCRYPTED",
+    value: 3
+  },
+  {
+    type: "defence",
+    category: "SEGMENTATION",
+    value: 2
+  },
+  {
+    type: "defence",
+    category: "DECOY SYSTEM",
+    value: 1
+  },
+  {
+    type: "defence",
+    category: "PROXY SERVER",
+    value: 1
+  },
+  {
+    type: "defence",
+    category: "AUDIT",
+    value: 4
+  },
+
+  // Utility cards
+  {
+    type: "utility",
+    category: "VIRUS SCAN",
+    value: 1
+  },
+  {
+    type: "utility",
+    category: "FORCE REBOOT",
+    value: 3
+  },
+  {
+    type: "utility",
+    category: "OVERCLOCK",
+    value: 2
+  },
+  {
+    type: "utility",
+    category: "PATCH",
+    value: 2
+  }
 ]
+
+// Create multiple copies of each card for a complete deck
+const createCompleteDeck = (): GameCardProps[] => {
+  const deck: GameCardProps[] = []
+  
+  // Add 2 copies of each card for a balanced deck
+  FULL_DECK.forEach(card => {
+    deck.push({...card})
+    deck.push({...card})
+  })
+  
+  return deck
+}
+
+const COMPLETE_DECK = createCompleteDeck()
 
 /**
  * Shuffles an array using Fisher-Yates algorithm
@@ -59,7 +160,7 @@ export function shuffleDeck<T>(deck: T[]): T[] {
  * Creates a new shuffled deck
  */
 export function createNewDeck(): GameCardProps[] {
-  return shuffleDeck(FULL_DECK)
+  return shuffleDeck(COMPLETE_DECK)
 }
 
 /**
@@ -86,7 +187,7 @@ export function dealInitialHands(deck: GameCardProps[]): {
   player2Hand: GameCardProps[]
   remainingDeck: GameCardProps[]
 } {
-  const INITIAL_HAND_SIZE = 5
+  const INITIAL_HAND_SIZE = 3
   
   const { drawnCards: player1Hand, remainingDeck: afterPlayer1 } = drawCards(deck, INITIAL_HAND_SIZE)
   const { drawnCards: player2Hand, remainingDeck } = drawCards(afterPlayer1, INITIAL_HAND_SIZE)

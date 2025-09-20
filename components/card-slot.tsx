@@ -40,7 +40,7 @@ export function CardSlot({
   return (
     <div
       className={cn(
-        "w-28 h-36 border-2 rounded-xl flex items-center justify-center transition-all duration-300 transform-gpu relative overflow-hidden backdrop-blur-sm",
+        "w-35 h-49 border-2 rounded-xl flex items-center justify-center transition-all duration-300 transform-gpu relative overflow-hidden backdrop-blur-sm",
         isEmpty && "border-dashed border-amber-300/50 bg-gradient-to-br from-amber-50/30 to-yellow-100/30 hover:border-amber-400/70 hover:bg-gradient-to-br hover:from-amber-100/40 hover:to-yellow-200/40",
         !isEmpty && "border-solid border-amber-400/60 bg-gradient-to-br from-amber-100/20 to-yellow-200/20",
         isValidDropTarget && "border-green-400 bg-gradient-to-br from-green-100/40 to-emerald-200/40 border-solid animate-pulse shadow-lg shadow-green-400/30",

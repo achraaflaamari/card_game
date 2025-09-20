@@ -6,11 +6,12 @@ interface GameStatusProps {
   actionLog: string[]
   onEndTurn: () => void
   onResetGame: () => void
+  onOpenCardLibrary?: () => void
   position?: "left" | "right" | "top"
 }
 
 
-export function GameStatus({ gameState, actionLog, onEndTurn, onResetGame, position = "top" }: GameStatusProps) {
+export function GameStatus({ gameState, actionLog, onEndTurn, onResetGame, onOpenCardLibrary, position = "top" }: GameStatusProps) {
   const currentPlayerName = gameState.currentPlayer === "player1" ? "Player 1" : "Player 2"
   const isVertical = position === "left" || position === "right"
 
@@ -313,6 +314,20 @@ export function GameStatus({ gameState, actionLog, onEndTurn, onResetGame, posit
             </div>
           </div>
 
+          {/* Card Library Button */}
+          {onOpenCardLibrary && (
+            <div className="bg-gradient-to-br from-slate-900/95 via-slate-800/95 to-slate-900/95 backdrop-blur-lg border border-slate-600/50 rounded-2xl shadow-2xl overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-800/50 via-blue-500/10 to-indigo-800/50 animate-pulse"></div>
+              <div className="relative p-4">
+                <Button
+                  onClick={onOpenCardLibrary}
+                  className="w-full cursor-pointer bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 border-0 shadow-lg hover:shadow-purple-500/25 transition-all duration-300 transform hover:scale-105"
+                >
+                   Card Library
+                </Button>
+              </div>
+            </div>
+          )}
          
         </>
       )}
